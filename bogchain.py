@@ -3,6 +3,7 @@ import json
 from time import time
 from urllib.parse import urlparse
 from uuid import uuid4
+from sys import argv
 
 import requests
 from flask import Flask, jsonify, request
@@ -243,8 +244,27 @@ def nodes_resolve():
     return jsonify(response), 200
 
 
+@app.route('/balance', methods=['GET'])
+def balance():
+    bogs = 0
+
+    for block in bogchain.chain:
+        for transaction in block['transactions']:
+            if transaction['sender'] == node_id:
+                bogs -= transaction['amount']
+            elif transaction['recipient'] == node_id:
+                bogs += transaction['amount']
+
+    return jsonify({'balance': bogs}), 200
+
+
+@app.route('/node_id', methods=['GET'])
+def get_node_id():
+    return jsonify({"node_id": node_id}), 200
+
+
 if __name__ == '__main__':
-    app.run()
+    app.run(host=argv[1], port=argv[2])
 
 
 
