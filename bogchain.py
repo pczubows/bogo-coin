@@ -264,7 +264,8 @@ def get_node_id():
 
 
 if __name__ == '__main__':
-    app.run(host=argv[1], port=argv[2])
+    port = 5000 if len(argv) <= 1 else argv[1]
+    app.run(host='0.0.0.0', port=port)
 
 
 
