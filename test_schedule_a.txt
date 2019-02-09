@@ -1,0 +1,2 @@
+2 register localhost:5002
+1 test localhost:5002
