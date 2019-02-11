@@ -82,25 +82,19 @@ class Bogchain:
     async def mine(self):
         pass  # todo kopanie nowych transakcji
 
-    async def receive_transaction(self):
+    def receive_transaction(self):
         pass  # todo obsługa nowej transakcji
 
-
-"""    def resolve_conflicts(self):
-        longest_chain = self.chain
+    def update_chain(self, new_chain):
         replaced = False
 
-        for node in self.peers.addresses_keys.values()[0]:
-            r = requests.get(node + '/chain')
+        if self.valid_chain(new_chain) and len(new_chain) > len(self.chain):
+            self.chain = new_chain
+            replaced = True
 
-            if r.status_code == 200:
-                chain = r.json()['chain']
-                length = r.json()['length']
-                if length > len(longest_chain) and self.valid_chain(chain):
-                    longest_chain = chain
-                    replaced = True
+        return replaced
 
-        if replaced:
-            self.chain = longest_chain
-
-        return replaced """
+    def update_peers(self, new_peers):
+        for new_peer in new_peers.keys():
+            if new_peer.key not in self.peers.addresses_pub_keys.keys():
+                self.peers.add_peer(new_peer['address'], new_peer['node_id'], new_peer['pub_key'])

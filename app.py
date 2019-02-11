@@ -1,6 +1,10 @@
 import logging
 import json
 import asyncio
+import threading
+import time
+
+import requests
 
 from uuid import uuid4
 from flask import Flask, request, jsonify
@@ -20,7 +24,17 @@ bogchain = Bogchain()
 gossip = Gossip(bogchain)
 pki = Pki()
 
-test_schedule = None
+
+def check_post_keys(required):
+    def decorator(f):
+        @wraps(f)
+        def decorated_func(*args, **kwargs):
+            pending_json = request.get_json()
+            if not all(key in pending_json for key in required):
+                return "Missing required values", 400
+            return f(*args, **kwargs)
+        return decorated_func
+    return decorator
 
 
 def verify_signature_foreign(f):
@@ -85,14 +99,10 @@ def mine():
 
 
 @app.route('/transactions/send', methods=['POST'])
+@check_post_keys(['recipient', 'amount'])
 @verify_signature_local
 def flood_transaction():
     trans_json = request.get_json()
-
-    required = ['recipient', 'amount']
-    if not all(key in trans_json for key in required):
-        return "Missing required values", 400
-
     trans_json['sender'] = node_id
 
     gossip.flood("/transactions/process", trans_json)
@@ -131,10 +141,11 @@ def full_chain():
 
 @app.route('/nodes', methods=['GET'])
 def nodes():
-    return jsonify(bogchain.peers.addresses_keys.keys())
+    return jsonify(bogchain.peers.addresses_keys)
 
 
 @app.route('/nodes/register', methods=['POST'])
+@check_post_keys(['address', 'node_id', 'pub_key'])
 def register_nodes():
     node = request.get_json()
 
@@ -153,6 +164,13 @@ def register_nodes():
     }
 
     return jsonify(response), 201
+
+
+@app.route('/update', methods=['POST'])
+@check_post_keys(['chain', 'peers'])
+@verify_signature_foreign
+def update_state():
+    update_json = request.get_json()
 
 
 @app.route('/nodes/resolve', methods=['GET'])
@@ -191,6 +209,24 @@ def get_node_id():
     return jsonify({"node_id": node_id}), 200
 
 
+async def main(schedule_file):
+    tasks = []
+
+    if schedule_file is not None:
+        test_schedule = TestScheduler(schedule_file,
+                                      bogchain=bogchain,
+                                      pki=pki,
+                                      logger=app.logger,
+                                      url=self_url,
+                                      node_id=node_id)
+
+        tasks.append(asyncio.create_task(test_schedule.execute()))
+
+    # todo dodać pętle obsługi kopania
+
+    await asyncio.gather(*tasks)
+
+
 if __name__ == '__main__':
     arg_parser = ArgumentParser()
     arg_parser.add_argument('-p', '--port', default=5000, type=int, help="listening port")
@@ -201,7 +237,7 @@ if __name__ == '__main__':
     port = cl_args.port
     verbose = cl_args.verbose
     genesis = cl_args.genesis
-    schedule = cl_args.schedule
+    schedule_file = cl_args.schedule
 
     if verbose:
         app.logger.setLevel(logging.DEBUG)
@@ -209,16 +245,20 @@ if __name__ == '__main__':
     if genesis:
         bogchain.create_genesis_block(node_id)
 
-    app.run(host='0.0.0.0', port=port, debug=True)
-
     self_url = f"http://localhost:{port}"
 
-    if schedule:
-        test_schedule = TestScheduler(schedule,
-                                      bogchain=bogchain,
-                                      pki=pki,
-                                      url=self_url,
-                                      node_id=node_id)
+    app_thread = threading.Thread(target=app.run,
+                                  kwargs={'host': "0.0.0.0", 'port': port},
+                                  daemon=True)
+    app_thread.start()
 
-        test_schedule.execute()
+    asyncio.run(main(schedule_file))
+
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        exit(0)
+
+
 
