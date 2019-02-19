@@ -20,7 +20,7 @@ app = Flask(__name__)
 
 node_id = str(uuid4()).replace('-', '')
 
-bogchain = Bogchain()
+bogchain = Bogchain(app.logger)
 gossip = Gossip(bogchain)
 pki = Pki()
 
@@ -112,16 +112,14 @@ def flood_transaction():
     return response, 201
 
 
-@app.route('/transactions/process')
+@app.route('/transactions/process', methods=['POST'])
+@check_post_keys(['sender', 'recipient', 'amount'])
 @verify_signature_foreign
 def process_transaction():
     trans_json = request.get_json()
 
-    required = ['sender', 'recipient', 'amount']
-    if not all(key in trans_json for key in required):
-        return "Missing required values", 400
-
     bogchain.new_transaction(trans_json['sender'], trans_json['recipient'], trans_json['amount'])
+    bogchain.wake_transaction_handler.set()
 
     response = f"New transaction {trans_json['amount']} from {trans_json['sender']} to {trans_json['recipient']}"
     app.logger.debug(response)
@@ -209,8 +207,10 @@ def get_node_id():
     return jsonify({"node_id": node_id}), 200
 
 
-async def main(schedule_file):
+async def main(**kwargs):
     tasks = []
+    schedule_file = kwargs['schedule_file']
+    accumulation_period = kwargs['accumulation_period']
 
     if schedule_file is not None:
         test_schedule = TestScheduler(schedule_file,
@@ -222,7 +222,7 @@ async def main(schedule_file):
 
         tasks.append(asyncio.create_task(test_schedule.execute()))
 
-    # todo dodać pętle obsługi kopania
+    tasks.append(bogchain.handle_transactions(accumulation_period))
 
     await asyncio.gather(*tasks)
 
@@ -233,11 +233,14 @@ if __name__ == '__main__':
     arg_parser.add_argument('-G', '--genesis', action="store_true", help="mines genesis block")
     arg_parser.add_argument('-v', '--verbose', action="store_true", help="display info level logs")
     arg_parser.add_argument('-s', '--schedule', default=None, type=str, help="test schedule file")
+    arg_parser.add_argument('-a', '--accumulation', default=3, type=float,
+                            help="time until transactions are included in block")
     cl_args = arg_parser.parse_args()
     port = cl_args.port
     verbose = cl_args.verbose
     genesis = cl_args.genesis
     schedule_file = cl_args.schedule
+    accumulation_period = cl_args.accumulation
 
     if verbose:
         app.logger.setLevel(logging.DEBUG)
@@ -252,7 +255,7 @@ if __name__ == '__main__':
                                   daemon=True)
     app_thread.start()
 
-    asyncio.run(main(schedule_file))
+    asyncio.run(main(schedule_file=schedule_file, accumulation_period=accumulation_period))
 
     try:
         while True:

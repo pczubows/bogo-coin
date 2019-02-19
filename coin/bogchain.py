@@ -1,9 +1,10 @@
 import requests
 import json
 import hashlib
+import asyncio
+import threading
 
-from time import time
-from urllib.parse import urlparse
+from time import time, sleep
 
 from coin.peers import Peers
 
@@ -11,21 +12,25 @@ from coin.peers import Peers
 class Bogchain:
     difficulty = 4
 
-    def __init__(self):
+    def __init__(self, logger):
         self.chain = []
-        self.current_transactions = []
+        self.awaiting_transactions = []
+        self.new_block_transactions = []
+        self.wake_transaction_handler = threading.Event()
+        self.mining_task = None
         self.peers = Peers()
+        self.logger = logger
 
     def new_block(self, proof, previous_hash=None):
         block = {
             'index': len(self.chain),
             'timestamp': time(),
-            'transactions': self.current_transactions,
+            'transactions': self.new_block_transactions,
             'proof': proof,
             'previous_hash': previous_hash or self.hash(self.chain[-1])
         }
 
-        self.current_transactions = []
+        self.new_block_transactions = []
 
         self.chain.append(block)
         return block
@@ -33,17 +38,17 @@ class Bogchain:
     def create_genesis_block(self, node_id):
         genesis_proof = self.proof_of_work(100)
 
-        self.new_transaction("mint", node_id, 200, genesis=True)
+        self.new_block_transactions.append({'sender': "mint",
+                                            'recipient': node_id,
+                                            'amount': 200})
         self.new_block(genesis_proof, 1)
 
-    def new_transaction(self, sender, recipient, amount, genesis=False):
-        self.current_transactions.append({
+    def new_transaction(self, sender, recipient, amount):
+        self.awaiting_transactions.append({
             'sender': sender,
             'recipient': recipient,
             'amount': amount
         })
-
-        return self.last_block['index'] + 1 if genesis is False else 0
 
     @staticmethod
     def hash(block):
@@ -79,11 +84,34 @@ class Bogchain:
 
         return True
 
-    async def mine(self):
-        pass  # todo kopanie nowych transakcji
+    async def handle_transactions(self, accumulation_period):
+        while True:
+            if len(self.awaiting_transactions) == 0:
+                self.logger.info(f"No transcations pending beginning sleep")
+                self.wake_transaction_handler.wait()
+                self.logger.info(f"New transactions sleep ends")
+                await asyncio.sleep(accumulation_period)  # todo sensownie czas oczekiwania
+            else:
+                self.new_block_transactions = self.awaiting_transactions[:]
+                self.awaiting_transactions = []
+                self.mining_task = asyncio.create_task(self.mine())
+                try:
+                    proof = await self.mining_task
+                    self.new_block(proof)
+                    self.awaiting_transactions.clear()
+                    self.logger.info(f"Mined new block, chain length {len(self.chain)}")
+                    #  todo rozgłoszenie
+                except asyncio.CancelledError:
+                    self.logger.info(f"Mining cancelled")
+                    pass
 
-    def receive_transaction(self):
-        pass  # todo obsługa nowej transakcji
+                await asyncio.sleep(accumulation_period)  # todo sensownie czas oczekiwania
+
+            self.wake_transaction_handler.clear()
+
+    async def mine(self):
+        last_proof = self.last_block['proof']
+        return self.proof_of_work(last_proof)
 
     def update_chain(self, new_chain):
         replaced = False

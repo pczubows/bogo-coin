@@ -1,3 +1,4 @@
+import requests
 import aiohttp
 import asyncio
 
@@ -5,6 +6,9 @@ import asyncio
 class Gossip:
     def __init__(self, bogchain):
         self.bogchain = bogchain
+
+    def register_response(self):
+        pass
 
     async def bogchain_advert(self):
         pass  # todo pojedyncze zapytanie z blockchainem w środku

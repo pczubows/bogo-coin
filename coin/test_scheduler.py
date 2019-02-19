@@ -9,7 +9,8 @@ class TestScheduler:
         'register',
         'test',
         'transfer',
-        'sleep'
+        'sleep',
+        'dummy_transaction'
     ]
 
     def __init__(self, schedule_file, **kwargs):
@@ -58,6 +59,15 @@ class TestScheduler:
         requests.post(f"http://{args[0]}/test",
                       json=test_json,
                       headers=self.get_headers(test_json))
+
+    def dummy_transaction(self, *args):
+        transaction_json = {'sender': args[1],
+                            'recipient': args[2],
+                            'amount': args[3]}
+
+        requests.post(f"http://{args[0]}/transactions/process",
+                      json=transaction_json,
+                      headers=self.get_headers(transaction_json))
 
     def transfer(self, *args):
         pass  # todo wykonaj przelew
