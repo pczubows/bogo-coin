@@ -1,10 +1,9 @@
-import requests
 import json
 import hashlib
 import asyncio
 import threading
 
-from time import time, sleep
+from time import time
 
 from coin.peers import Peers
 
@@ -59,6 +58,13 @@ class Bogchain:
     def last_block(self):
         return self.chain[-1]
 
+    @property
+    def current_state(self):
+        return {
+            'chain': self.chain,
+            'peers': self.peers.addresses_pub_keys
+                }
+
     def proof_of_work(self, last_proof):
         proof = 0
         while self.valid_proof(last_proof, proof) is False:
@@ -97,8 +103,9 @@ class Bogchain:
                 self.mining_task = asyncio.create_task(self.mine())
                 try:
                     proof = await self.mining_task
+                    # todo wypłać sobie nagrodę za kopanie
                     self.new_block(proof)
-                    self.awaiting_transactions.clear()
+                    self.wake_transaction_handler.clear()
                     self.logger.info(f"Mined new block, chain length {len(self.chain)}")
                     #  todo rozgłoszenie
                 except asyncio.CancelledError:
@@ -114,6 +121,7 @@ class Bogchain:
         return self.proof_of_work(last_proof)
 
     def update_chain(self, new_chain):
+        #  todo sprawdzenie czy nie ma duplikatów pierwszego bloku
         replaced = False
 
         if self.valid_chain(new_chain) and len(new_chain) > len(self.chain):

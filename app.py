@@ -21,8 +21,8 @@ app = Flask(__name__)
 node_id = str(uuid4()).replace('-', '')
 
 bogchain = Bogchain(app.logger)
-gossip = Gossip(bogchain)
 pki = Pki()
+gossip = Gossip(bogchain=bogchain, pki=pki, node_id=node_id)
 
 
 def check_post_keys(required):
@@ -146,6 +146,7 @@ def nodes():
 @check_post_keys(['address', 'node_id', 'pub_key'])
 def register_nodes():
     node = request.get_json()
+    print(request.headers)
 
     if node is None:
         return "No nodes provided", 400
@@ -153,8 +154,14 @@ def register_nodes():
     if bogchain.peers.add_peer(node['address'], node['node_id'], node['pub_key']):
         new_node_id = node['node_id']
         app.logger.debug(f"Registered new node {new_node_id}")
+
+        if "registration-resp" not in request.headers:
+            gossip.register_response(node['address'])
     else:
-        app.logger.debug(f"Node already exists")
+        message = f"Node {node['node_id']} already exists"
+        app.logger.debug(message)
+
+        return jsonify({'message': message}), 409
 
     response = {
         'message': 'Node added',
@@ -170,22 +177,9 @@ def register_nodes():
 def update_state():
     update_json = request.get_json()
 
+    response = {}
 
-@app.route('/nodes/resolve', methods=['GET'])
-def nodes_resolve():
-    replaced = bogchain.resolve_conflicts()
-
-    if replaced:
-        response = {
-            "message": "Chain replaced",
-            "new_chain": bogchain.chain
-        }
-    else:
-        response = {
-            "message": "Our chain is valid"
-        }
-
-    return jsonify(response), 200
+    return response, 200
 
 
 @app.route('/balance', methods=['GET'])
@@ -216,15 +210,14 @@ async def main(**kwargs):
         test_schedule = TestScheduler(schedule_file,
                                       bogchain=bogchain,
                                       pki=pki,
-                                      logger=app.logger,
-                                      url=self_url,
+                                      url=gossip.local_url,
                                       node_id=node_id)
 
         tasks.append(asyncio.create_task(test_schedule.execute()))
 
     tasks.append(bogchain.handle_transactions(accumulation_period))
 
-    await asyncio.gather(*tasks)
+    await asyncio.gather(*tasks, return_exceptions=True)
 
 
 if __name__ == '__main__':
@@ -234,7 +227,7 @@ if __name__ == '__main__':
     arg_parser.add_argument('-v', '--verbose', action="store_true", help="display info level logs")
     arg_parser.add_argument('-s', '--schedule', default=None, type=str, help="test schedule file")
     arg_parser.add_argument('-a', '--accumulation', default=3, type=float,
-                            help="time until transactions are included in block")
+                            help="time until transactions are mined into block")
     cl_args = arg_parser.parse_args()
     port = cl_args.port
     verbose = cl_args.verbose
@@ -248,7 +241,7 @@ if __name__ == '__main__':
     if genesis:
         bogchain.create_genesis_block(node_id)
 
-    self_url = f"http://localhost:{port}"
+    gossip.local_url = f"http://localhost:{port}"
 
     app_thread = threading.Thread(target=app.run,
                                   kwargs={'host': "0.0.0.0", 'port': port},

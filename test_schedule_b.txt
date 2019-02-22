@@ -1,4 +1,4 @@
 1 register 127.0.0.1:5001
-3 dummy_transaction 127.0.0.1:5001 alice bob 10000
-0.5 dummy_transaction 127.0.0.1:5001 alice bob 10000
-0.5 dummy_transaction 127.0.0.1:5001 alice bob 10000
+# 3 dummy_transaction 127.0.0.1:5001 alice bob 10000
+# 0.5 dummy_transaction 127.0.0.1:5001 alice bob 10000
+# 0.5 dummy_transaction 127.0.0.1:5001 alice bob 10000
