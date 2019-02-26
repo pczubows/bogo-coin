@@ -12,6 +12,7 @@ class Bogchain:
     difficulty = 4
 
     def __init__(self, logger):
+        #todo dodać referencje do node_id jeden obiekt to tego wszystkiego
         self.chain = []
         self.awaiting_transactions = []
         self.new_block_transactions = []
@@ -42,12 +43,13 @@ class Bogchain:
                                             'amount': 200})
         self.new_block(genesis_proof, 1)
 
-    def new_transaction(self, sender, recipient, amount):
-        self.awaiting_transactions.append({
+    @staticmethod
+    def create_transaction(sender, recipient, amount):
+        return {
             'sender': sender,
             'recipient': recipient,
             'amount': amount
-        })
+        }
 
     @staticmethod
     def hash(block):
@@ -103,7 +105,7 @@ class Bogchain:
                 self.mining_task = asyncio.create_task(self.mine())
                 try:
                     proof = await self.mining_task
-                    # todo wypłać sobie nagrodę za kopanie
+                    self.new_block_transactions.append(Bogchain.create_transaction("mint", ))
                     self.new_block(proof)
                     self.wake_transaction_handler.clear()
                     self.logger.info(f"Mined new block, chain length {len(self.chain)}")

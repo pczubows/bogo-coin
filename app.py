@@ -78,6 +78,7 @@ def test_post():
     return "OK", 200
 
 
+"""
 @app.route('/mine', methods=['GET'])
 def mine():
     last_proof = bogchain.last_block['proof']
@@ -96,6 +97,7 @@ def mine():
     }
 
     return jsonify(response), 200
+"""
 
 
 @app.route('/transactions/send', methods=['POST'])
@@ -118,7 +120,8 @@ def flood_transaction():
 def process_transaction():
     trans_json = request.get_json()
 
-    bogchain.new_transaction(trans_json['sender'], trans_json['recipient'], trans_json['amount'])
+    bogchain.awaiting_transactions.append(
+        Bogchain.create_transaction(trans_json['sender'], trans_json['recipient'], trans_json['amount']))
     bogchain.wake_transaction_handler.set()
 
     response = f"New transaction {trans_json['amount']} from {trans_json['sender']} to {trans_json['recipient']}"
