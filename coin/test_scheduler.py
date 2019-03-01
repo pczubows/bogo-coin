@@ -44,7 +44,7 @@ class TestScheduler:
         self.bogchain.logger.info(f"Executing {command_args[1]} on {target}")
 
     def get_headers(self, data):
-        signature = self.pki.sign(json.dumps(data))
+        signature = self.pki.sign(json.dumps(data, sort_keys=True))
         return {'origin-id': self.node_id, 'signature': signature}
 
 
@@ -77,5 +77,3 @@ class TestScheduler:
     def transfer(self, *args):
         pass  # todo wykonaj przelew
 
-    def sleep(self):
-        pass  # todo nie rób nic przez zadany czas

@@ -10,16 +10,18 @@ from coin.peers import Peers
 
 class Bogchain:
     difficulty = 4
+    mining_bounty = 2
 
-    def __init__(self, logger):
-        #todo dodać referencje do node_id jeden obiekt to tego wszystkiego
+    def __init__(self, **kwargs):
+        self.node_id = kwargs['node_id']
+        self.gossip = kwargs['gossip']
         self.chain = []
         self.awaiting_transactions = []
         self.new_block_transactions = []
         self.wake_transaction_handler = threading.Event()
         self.mining_task = None
         self.peers = Peers()
-        self.logger = logger
+        self.logger = kwargs['logger']
 
     def new_block(self, proof, previous_hash=None):
         block = {
@@ -79,8 +81,10 @@ class Bogchain:
         return hashlib.sha256(f'{last_proof}{proof}'.encode()).hexdigest()[-4:] == Bogchain.difficulty * '0'
 
     def valid_chain(self, chain):
+        if len(chain) == 1:
+            return True
 
-        for i in range(1, len(chain) + 1):
+        for i in range(1, len(chain)):
             block = chain[i]
             prev_block = chain[i - 1]
 
@@ -105,14 +109,15 @@ class Bogchain:
                 self.mining_task = asyncio.create_task(self.mine())
                 try:
                     proof = await self.mining_task
-                    self.new_block_transactions.append(Bogchain.create_transaction("mint", ))
+                    self.new_block_transactions.append(
+                        Bogchain.create_transaction("mint", self.node_id, Bogchain.mining_bounty))
                     self.new_block(proof)
                     self.wake_transaction_handler.clear()
                     self.logger.info(f"Mined new block, chain length {len(self.chain)}")
-                    #  todo rozgłoszenie
+                    self.gossip.flood('/update', self.current_state, self.peers.addresses)
                 except asyncio.CancelledError:
                     self.logger.info(f"Mining cancelled")
-                    pass
+                    self.mining_task = None
 
                 await asyncio.sleep(accumulation_period)  # todo sensownie czas oczekiwania
 
@@ -132,7 +137,12 @@ class Bogchain:
 
         return replaced
 
-    def update_peers(self, new_peers):
-        for new_peer in new_peers.keys():
-            if new_peer.key not in self.peers.addresses_pub_keys.keys():
-                self.peers.add_peer(new_peer['address'], new_peer['node_id'], new_peer['pub_key'])
+    def update_peers(self, received_peers):
+        new_peers = []
+
+        for key, value in received_peers.items():
+            if key not in self.peers.addresses_pub_keys.keys():
+                self.peers.add_peer(value['address'], key, value['pub_key'])
+                new_peers.append(value['address'])
+
+        return new_peers

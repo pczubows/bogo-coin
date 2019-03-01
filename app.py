@@ -20,9 +20,9 @@ app = Flask(__name__)
 
 node_id = str(uuid4()).replace('-', '')
 
-bogchain = Bogchain(app.logger)
 pki = Pki()
-gossip = Gossip(bogchain=bogchain, pki=pki, node_id=node_id)
+gossip = Gossip(logger=app.logger, pki=pki, node_id=node_id)
+bogchain = Bogchain(node_id=node_id, logger=app.logger, gossip=gossip)
 
 
 def check_post_keys(required):
@@ -46,7 +46,7 @@ def verify_signature_foreign(f):
         if not any([signature, origin_id]):
             return "Invalid request", 400
 
-        data = json.dumps(request.get_json())
+        data = json.dumps(request.get_json(), sort_keys=True)
         pub_key = bogchain.peers.get_pub_key(origin_id)
 
         if Pki.verify(signature, data, pub_key) is False:
@@ -63,7 +63,7 @@ def verify_signature_local(f):
         if not signature:
             return "Invalid request", 400
 
-        data = json.dumps(request.get_json())
+        data = json.dumps(request.get_json(), sort_keys=True)
         pub_key = pki.pub_key
 
         if Pki.verify(signature, data, pub_key) is False:
@@ -107,7 +107,7 @@ def flood_transaction():
     trans_json = request.get_json()
     trans_json['sender'] = node_id
 
-    gossip.flood("/transactions/process", trans_json)
+    gossip.flood("/transactions/process", trans_json, bogchain.current_state)
 
     response = f"Outgoing transaction {trans_json['amount']} to {trans_json['recipient']}"
 
@@ -149,7 +149,6 @@ def nodes():
 @check_post_keys(['address', 'node_id', 'pub_key'])
 def register_nodes():
     node = request.get_json()
-    print(request.headers)
 
     if node is None:
         return "No nodes provided", 400
@@ -158,8 +157,8 @@ def register_nodes():
         new_node_id = node['node_id']
         app.logger.debug(f"Registered new node {new_node_id}")
 
-        if "registration-resp" not in request.headers:
-            gossip.register_response(node['address'])
+        if "Registration-Resp" not in request.headers:
+            gossip.register_response(node['address'], bogchain.current_state)
     else:
         message = f"Node {node['node_id']} already exists"
         app.logger.debug(message)
@@ -180,9 +179,19 @@ def register_nodes():
 def update_state():
     update_json = request.get_json()
 
-    response = {}
+    updated = bogchain.update_chain(update_json['chain'])
 
-    return response, 200
+    if updated and bogchain.mining_task:
+        bogchain.mining_task.cancel()
+
+    new_peers = bogchain.update_peers(update_json['peers'])
+
+    response = {
+        'new_peers': new_peers,
+        'updated': updated
+    }
+
+    return jsonify(response), 200
 
 
 @app.route('/balance', methods=['GET'])
@@ -244,7 +253,7 @@ if __name__ == '__main__':
     if genesis:
         bogchain.create_genesis_block(node_id)
 
-    gossip.local_url = f"http://localhost:{port}"
+    gossip.local_url = f"http://127.0.0.1:{port}"
 
     app_thread = threading.Thread(target=app.run,
                                   kwargs={'host': "0.0.0.0", 'port': port},
