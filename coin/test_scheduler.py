@@ -1,5 +1,6 @@
 import requests
 import json
+import traceback
 
 from time import sleep
 
@@ -33,11 +34,7 @@ class TestScheduler:
             if command_args[1] in self.allowed:
                 sleep(float(command_args[0]))
                 method = getattr(self, command_args[1])
-                try:
-                    method(*command_args[2:])
-                except Exception as e:
-                    print(e)
-                self.log(command_args)
+                method(*command_args[2:])
 
     def log(self, command_args):
         target = command_args[2] if len(command_args) > 2 else "self"
@@ -46,9 +43,6 @@ class TestScheduler:
     def get_headers(self, data):
         signature = self.pki.sign(json.dumps(data, sort_keys=True))
         return {'origin-id': self.node_id, 'signature': signature}
-
-
-# todo zamienić na korutyny aiohttp, żeby wyjątki się propagowały
 
     def register(self, *args):
         register_json = {
@@ -66,14 +60,24 @@ class TestScheduler:
                       headers=self.get_headers(test_json))
 
     def dummy_transaction(self, *args):
-        transaction_json = {'sender': args[1],
-                            'recipient': args[2],
-                            'amount': args[3]}
+        transaction_json = {
+            'sender': args[1],
+            'recipient': args[2],
+            'amount': args[3]
+        }
 
         requests.post(f"http://{args[0]}/transactions/process",
                       json=transaction_json,
                       headers=self.get_headers(transaction_json))
 
     def transfer(self, *args):
-        pass  # todo wykonaj przelew
+        recipient = self.bogchain.peers.node_ids[args[0]]
+        amount = int(args[1])
+
+        transaction_json = {
+            'recipient': recipient,
+            'amount': amount
+        }
+
+        requests.post(f"{self.url}/transactions/new", json=transaction_json, headers=self.get_headers(transaction_json))
 

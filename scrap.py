@@ -24,4 +24,4 @@ async def main():
 
 
 loop = asyncio.get_event_loop()
-loop.run_until_complete(post("http://httpbin.org/post", {"Wyjątki": 'Niejasne'}))
+loop.run_until_complete(post("http://localhost:5000/chain", {"Wyjątki": 'Niejasne'}))

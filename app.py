@@ -100,14 +100,14 @@ def mine():
 """
 
 
-@app.route('/transactions/send', methods=['POST'])
+@app.route('/transactions/new', methods=['POST'])
 @check_post_keys(['recipient', 'amount'])
 @verify_signature_local
 def flood_transaction():
     trans_json = request.get_json()
     trans_json['sender'] = node_id
 
-    gossip.flood("/transactions/process", trans_json, bogchain.current_state)
+    gossip.flood("/transactions/process", trans_json, bogchain.peers.addresses)
 
     response = f"Outgoing transaction {trans_json['amount']} to {trans_json['recipient']}"
 

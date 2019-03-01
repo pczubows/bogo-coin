@@ -1,6 +1,4 @@
 import requests
-import aiohttp
-import asyncio
 import json
 import traceback
 
@@ -40,21 +38,8 @@ class Gossip:
         else:
             self.logger.info(f"Registering with new peer failed status code: {register_self_request.status_code}")
 
-    async def post(self, url, post_json):
-        async with aiohttp.ClientSession() as session:
-            try:
-                print(url)
-                async with session.post(url, json=post_json, headers=self.get_headers(post_json)) as response:
-                    return await response.read()
-            except Exception:
-                print(traceback.format_exc())
-
     def flood(self, path, data, addresses, excluded=[]):
-        pending_requests = []
-
         for address in addresses:
             if address not in excluded:
-                pending_requests.append(self.post(f"{address}{path}", data))
-
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(asyncio.wait(pending_requests))
+                post_request = requests.post(f"{address}{path}", json=data, headers=self.get_headers(data))
+                self.logger.info(f"Node state sent to peer request status code: {post_request.status_code}")
