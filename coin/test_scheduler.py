@@ -34,7 +34,12 @@ class TestScheduler:
             if command_args[1] in self.allowed:
                 sleep(float(command_args[0]))
                 method = getattr(self, command_args[1])
-                method(*command_args[2:])
+                try:
+                    method(*command_args[2:])
+                except Exception as e:
+                    print(traceback.format_exc(e))
+                    raise e
+                self.log(command_args)
 
     def log(self, command_args):
         target = command_args[2] if len(command_args) > 2 else "self"

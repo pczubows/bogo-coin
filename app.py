@@ -4,8 +4,6 @@ import asyncio
 import threading
 import time
 
-import requests
-
 from uuid import uuid4
 from flask import Flask, request, jsonify
 from argparse import ArgumentParser
@@ -15,6 +13,11 @@ from coin.bogchain import Bogchain
 from coin.pki import Pki
 from coin.gossip import Gossip
 from coin.test_scheduler import TestScheduler
+
+
+# todo sprawdzanie timestampów
+# todo sprawdzanie Genesis
+# todo integracja z Dockerem
 
 app = Flask(__name__)
 
@@ -49,6 +52,9 @@ def verify_signature_foreign(f):
         data = json.dumps(request.get_json(), sort_keys=True)
         pub_key = bogchain.peers.get_pub_key(origin_id)
 
+        if pub_key is None:
+            return "Node not registered", 403
+
         if Pki.verify(signature, data, pub_key) is False:
             return "Invalid signature", 403
         return f(*args, **kwargs)
@@ -78,28 +84,6 @@ def test_post():
     return "OK", 200
 
 
-"""
-@app.route('/mine', methods=['GET'])
-def mine():
-    last_proof = bogchain.last_block['proof']
-    proof = bogchain.proof_of_work(last_proof)
-
-    bogchain.new_transaction(sender="0", recipient=node_id, amount=1)
-
-    block = bogchain.new_block(proof)
-
-    response = {
-        'message': 'New block forged',
-        'index': block['index'],
-        'transactions': block['transactions'],
-        'proof': block['proof'],
-        'previous_hash': block['previous_hash']
-    }
-
-    return jsonify(response), 200
-"""
-
-
 @app.route('/transactions/new', methods=['POST'])
 @check_post_keys(['recipient', 'amount'])
 @verify_signature_local
@@ -116,7 +100,7 @@ def flood_transaction():
 
 @app.route('/transactions/process', methods=['POST'])
 @check_post_keys(['sender', 'recipient', 'amount'])
-@verify_signature_foreign
+#@verify_signature_foreign
 def process_transaction():
     trans_json = request.get_json()
 
@@ -142,7 +126,7 @@ def full_chain():
 
 @app.route('/nodes', methods=['GET'])
 def nodes():
-    return jsonify(bogchain.peers.addresses_keys)
+    return jsonify(bogchain.peers.node_ids)
 
 
 @app.route('/nodes/register', methods=['POST'])
@@ -158,7 +142,9 @@ def register_nodes():
         app.logger.debug(f"Registered new node {new_node_id}")
 
         if "Registration-Resp" not in request.headers:
-            gossip.register_response(node['address'], bogchain.current_state)
+            register_resp_success = gossip.register_response(node['address'], bogchain.current_state)
+            if register_resp_success:
+                gossip.flood("/update", bogchain.current_state, bogchain.peers.addresses, [node['address']])
     else:
         message = f"Node {node['node_id']} already exists"
         app.logger.debug(message)
@@ -181,8 +167,9 @@ def update_state():
 
     updated = bogchain.update_chain(update_json['chain'])
 
-    if updated and bogchain.mining_task:
+    if updated and bogchain.mining_task is not None:
         bogchain.mining_task.cancel()
+        app.logger.info("Recieved new update cancelling mining task")
 
     new_peers = bogchain.update_peers(update_json['peers'])
 
@@ -218,6 +205,8 @@ async def main(**kwargs):
     schedule_file = kwargs['schedule_file']
     accumulation_period = kwargs['accumulation_period']
 
+    tasks.append(bogchain.handle_transactions(accumulation_period))
+
     if schedule_file is not None:
         test_schedule = TestScheduler(schedule_file,
                                       bogchain=bogchain,
@@ -226,8 +215,6 @@ async def main(**kwargs):
                                       node_id=node_id)
 
         tasks.append(asyncio.create_task(test_schedule.execute()))
-
-    tasks.append(bogchain.handle_transactions(accumulation_period))
 
     await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -240,18 +227,24 @@ if __name__ == '__main__':
     arg_parser.add_argument('-s', '--schedule', default=None, type=str, help="test schedule file")
     arg_parser.add_argument('-a', '--accumulation', default=3, type=float,
                             help="time until transactions are mined into block")
+    arg_parser.add_argument('-T', '--throttle', default=None, type=float)
+
     cl_args = arg_parser.parse_args()
     port = cl_args.port
     verbose = cl_args.verbose
     genesis = cl_args.genesis
     schedule_file = cl_args.schedule
     accumulation_period = cl_args.accumulation
+    throttle = cl_args.throttle
 
     if verbose:
         app.logger.setLevel(logging.DEBUG)
 
     if genesis:
         bogchain.create_genesis_block(node_id)
+
+    if throttle:
+        bogchain.throttle = throttle
 
     gossip.local_url = f"http://127.0.0.1:{port}"
 
@@ -267,6 +260,3 @@ if __name__ == '__main__':
             time.sleep(1)
     except KeyboardInterrupt:
         exit(0)
-
-
-

@@ -2,6 +2,7 @@ import json
 import hashlib
 import asyncio
 import threading
+import traceback
 
 from time import time
 
@@ -78,7 +79,7 @@ class Bogchain:
 
     @staticmethod
     def valid_proof(last_proof, proof):
-        return hashlib.sha256(f'{last_proof}{proof}'.encode()).hexdigest()[-4:] == Bogchain.difficulty * '0'
+        return hashlib.sha256(f'{last_proof}{proof}'.encode()).hexdigest()[-Bogchain.difficulty:] == Bogchain.difficulty * '0'
 
     def valid_chain(self, chain):
         if len(chain) == 1:
@@ -112,28 +113,42 @@ class Bogchain:
                     self.new_block_transactions.append(
                         Bogchain.create_transaction("mint", self.node_id, Bogchain.mining_bounty))
                     self.new_block(proof)
+                    self.gossip.flood('/update', self.current_state, self.peers.addresses)
                     self.wake_transaction_handler.clear()
                     self.logger.info(f"Mined new block, chain length {len(self.chain)}")
-                    self.gossip.flood('/update', self.current_state, self.peers.addresses)
                 except asyncio.CancelledError:
                     self.logger.info(f"Mining cancelled")
                     self.mining_task = None
 
-                await asyncio.sleep(accumulation_period)  # todo sensownie czas oczekiwania
-
             self.wake_transaction_handler.clear()
 
     async def mine(self):
+        throttled = True if 'throttle' in dir(self) else False
+
+        if throttled:
+            await asyncio.sleep(self.throttle)
+
         last_proof = self.last_block['proof']
         return self.proof_of_work(last_proof)
 
     def update_chain(self, new_chain):
-        #  todo sprawdzenie czy nie ma duplikatów pierwszego bloku
         replaced = False
 
-        if self.valid_chain(new_chain) and len(new_chain) > len(self.chain):
-            self.chain = new_chain
+        if not self.valid_chain(new_chain):
+            self.logger.info("Invalid received chain")
+            return replaced
+
+        elif len(self.chain) == len(new_chain):
+            if new_chain[-1]['timestamp'] < self.chain[-1]['timestamp']:
+                self.logger.info("Choosing older chain")
+                replaced = True
+
+        elif len(new_chain) > len(self.chain):
+            self.logger.info("Choosing longer chain")
             replaced = True
+
+        if replaced:
+            self.chain = new_chain
 
         return replaced
 
@@ -141,8 +156,13 @@ class Bogchain:
         new_peers = []
 
         for key, value in received_peers.items():
-            if key not in self.peers.addresses_pub_keys.keys():
+            if key not in [*self.peers.addresses_pub_keys.keys(), self.node_id]:
                 self.peers.add_peer(value['address'], key, value['pub_key'])
                 new_peers.append(value['address'])
+
+        new_peers_number = len(new_peers)
+
+        if new_peers_number != 0:
+            self.logger.info(f"Updated peers, number of new peers {len(new_peers)}")
 
         return new_peers

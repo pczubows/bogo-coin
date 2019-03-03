@@ -33,10 +33,13 @@ class Gossip:
 
             if update_request.status_code == 200:
                 self.logger.info("Posting node state to peer successful")
+                return True
             else:
                 self.logger.info(f"Posting node state to peer failed status code: {update_request.status_code}")
+                return False
         else:
             self.logger.info(f"Registering with new peer failed status code: {register_self_request.status_code}")
+            return False
 
     def flood(self, path, data, addresses, excluded=[]):
         for address in addresses:

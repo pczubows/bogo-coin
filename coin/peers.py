@@ -12,10 +12,20 @@ class Peers:
         return False
 
     def get_address(self, node_id):
-        return self.addresses_pub_keys[node_id]['address']
+        node = self.addresses_pub_keys.get(node_id)
+
+        if node is not None:
+            return node['address']
+        else:
+            return None
 
     def get_pub_key(self, node_id):
-        return self.addresses_pub_keys[node_id]['pub_key']
+        node = self.addresses_pub_keys.get(node_id)
+
+        if node is not None:
+            return node['pub_key']
+        else:
+            return None
 
     @property
     def addresses(self):
