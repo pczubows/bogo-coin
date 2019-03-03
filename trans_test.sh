@@ -26,7 +26,7 @@ curl --header "Content-Type: application/json" \
 	$a_url/send 
 
 echo "mining"
-for i in  $(seq 4) 
+for i in $(seq 4)
 do
 	curl $a_url/mine > /dev/null
 	curl $b_url/mine > /dev/null

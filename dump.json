@@ -1,0 +1,216 @@
+{
+   "node_id" : "f1ce3c535cfd4217be55be593098fc0d"
+}
+
+{
+   "chain" : [
+      {
+         "proof" : 33575,
+         "transactions" : [
+            {
+               "sender" : "mint",
+               "amount" : 200,
+               "recipient" : "f1ce3c535cfd4217be55be593098fc0d"
+            }
+         ],
+         "index" : 0,
+         "timestamp" : 1551641795.58345,
+         "previous_hash" : 1
+      },
+      {
+         "proof" : 122196,
+         "transactions" : [
+            {
+               "amount" : 10,
+               "recipient" : "97a3344edff54d1ba34445ab4935da04",
+               "sender" : "f1ce3c535cfd4217be55be593098fc0d"
+            },
+            {
+               "sender" : "f1ce3c535cfd4217be55be593098fc0d",
+               "amount" : 10,
+               "recipient" : "f09e280eab5c4ef69f5a038cb4f40b29"
+            },
+            {
+               "amount" : 2,
+               "recipient" : "f09e280eab5c4ef69f5a038cb4f40b29",
+               "sender" : "mint"
+            }
+         ],
+         "index" : 1,
+         "timestamp" : 1551641799.84786,
+         "previous_hash" : "2840619fba877cf00c4524bcd35fc31d5254e39bf7f7f8a5c0a6c5df6b3d9370"
+      },
+      {
+         "transactions" : [
+            {
+               "sender" : "f09e280eab5c4ef69f5a038cb4f40b29",
+               "recipient" : "97a3344edff54d1ba34445ab4935da04",
+               "amount" : 1
+            },
+            {
+               "amount" : 2,
+               "recipient" : "97a3344edff54d1ba34445ab4935da04",
+               "sender" : "mint"
+            }
+         ],
+         "proof" : 203109,
+         "previous_hash" : "65264269b013dd22194edc1f9d83c3d861cdc379442ffd056c00cf6f015eead1",
+         "timestamp" : 1551641803.38782,
+         "index" : 2
+      }
+   ],
+   "length" : 3
+}
+
+{
+   "node_id" : "97a3344edff54d1ba34445ab4935da04"
+}
+
+{
+   "length" : 3,
+   "chain" : [
+      {
+         "index" : 0,
+         "proof" : 33575,
+         "previous_hash" : 1,
+         "timestamp" : 1551641795.58345,
+         "transactions" : [
+            {
+               "recipient" : "f1ce3c535cfd4217be55be593098fc0d",
+               "sender" : "mint",
+               "amount" : 200
+            }
+         ]
+      },
+      {
+         "index" : 1,
+         "proof" : 122196,
+         "previous_hash" : "2840619fba877cf00c4524bcd35fc31d5254e39bf7f7f8a5c0a6c5df6b3d9370",
+         "timestamp" : 1551641799.84786,
+         "transactions" : [
+            {
+               "amount" : 10,
+               "recipient" : "97a3344edff54d1ba34445ab4935da04",
+               "sender" : "f1ce3c535cfd4217be55be593098fc0d"
+            },
+            {
+               "amount" : 10,
+               "recipient" : "f09e280eab5c4ef69f5a038cb4f40b29",
+               "sender" : "f1ce3c535cfd4217be55be593098fc0d"
+            },
+            {
+               "recipient" : "f09e280eab5c4ef69f5a038cb4f40b29",
+               "sender" : "mint",
+               "amount" : 2
+            }
+         ]
+      },
+      {
+         "timestamp" : 1551641803.38782,
+         "transactions" : [
+            {
+               "recipient" : "97a3344edff54d1ba34445ab4935da04",
+               "sender" : "f09e280eab5c4ef69f5a038cb4f40b29",
+               "amount" : 1
+            },
+            {
+               "amount" : 2,
+               "sender" : "mint",
+               "recipient" : "97a3344edff54d1ba34445ab4935da04"
+            }
+         ],
+         "proof" : 203109,
+         "index" : 2,
+         "previous_hash" : "65264269b013dd22194edc1f9d83c3d861cdc379442ffd056c00cf6f015eead1"
+      }
+   ]
+}
+
+{
+   "node_id" : "f09e280eab5c4ef69f5a038cb4f40b29"
+}
+
+{
+   "chain" : [
+      {
+         "timestamp" : 1551641795.58345,
+         "previous_hash" : 1,
+         "proof" : 33575,
+         "transactions" : [
+            {
+               "sender" : "mint",
+               "amount" : 200,
+               "recipient" : "f1ce3c535cfd4217be55be593098fc0d"
+            }
+         ],
+         "index" : 0
+      },
+      {
+         "proof" : 122196,
+         "timestamp" : 1551641799.84786,
+         "previous_hash" : "2840619fba877cf00c4524bcd35fc31d5254e39bf7f7f8a5c0a6c5df6b3d9370",
+         "transactions" : [
+            {
+               "recipient" : "97a3344edff54d1ba34445ab4935da04",
+               "amount" : 10,
+               "sender" : "f1ce3c535cfd4217be55be593098fc0d"
+            },
+            {
+               "amount" : 10,
+               "sender" : "f1ce3c535cfd4217be55be593098fc0d",
+               "recipient" : "f09e280eab5c4ef69f5a038cb4f40b29"
+            },
+            {
+               "sender" : "mint",
+               "amount" : 2,
+               "recipient" : "f09e280eab5c4ef69f5a038cb4f40b29"
+            }
+         ],
+         "index" : 1
+      },
+      {
+         "transactions" : [
+            {
+               "recipient" : "97a3344edff54d1ba34445ab4935da04",
+               "sender" : "f09e280eab5c4ef69f5a038cb4f40b29",
+               "amount" : 1
+            },
+            {
+               "sender" : "mint",
+               "amount" : 2,
+               "recipient" : "97a3344edff54d1ba34445ab4935da04"
+            }
+         ],
+         "index" : 2,
+         "previous_hash" : "65264269b013dd22194edc1f9d83c3d861cdc379442ffd056c00cf6f015eead1",
+         "timestamp" : 1551641803.38782,
+         "proof" : 203109
+      }
+   ],
+   "length" : 3
+}
+
+{
+   "node_id" : "f1ce3c535cfd4217be55be593098fc0d"
+}
+
+{
+   "balance" : 180
+}
+
+{
+   "node_id" : "97a3344edff54d1ba34445ab4935da04"
+}
+
+{
+   "balance" : 13
+}
+
+{
+   "node_id" : "f09e280eab5c4ef69f5a038cb4f40b29"
+}
+
+{
+   "balance" : 11
+}
+

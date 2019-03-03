@@ -106,7 +106,8 @@ def process_transaction():
 
     bogchain.awaiting_transactions.append(
         Bogchain.create_transaction(trans_json['sender'], trans_json['recipient'], trans_json['amount']))
-    bogchain.wake_transaction_handler.set()
+    if not bogchain.wake_transaction_handler.is_set():
+        bogchain.wake_transaction_handler.set()
 
     response = f"New transaction {trans_json['amount']} from {trans_json['sender']} to {trans_json['recipient']}"
     app.logger.debug(response)
@@ -167,9 +168,11 @@ def update_state():
 
     updated = bogchain.update_chain(update_json['chain'])
 
-    if updated and bogchain.mining_task is not None:
-        bogchain.mining_task.cancel()
-        app.logger.info("Recieved new update cancelling mining task")
+    if updated:
+        # todo ogarnąć
+        if bogchain.mining_task is not None:
+            bogchain.mining_task.cancel()
+            app.logger.info("Recieved new update cancelling mining task")
 
     new_peers = bogchain.update_peers(update_json['peers'])
 
@@ -201,23 +204,7 @@ def get_node_id():
 
 
 async def main(**kwargs):
-    tasks = []
-    schedule_file = kwargs['schedule_file']
-    accumulation_period = kwargs['accumulation_period']
-
-    tasks.append(bogchain.handle_transactions(accumulation_period))
-
-    if schedule_file is not None:
-        test_schedule = TestScheduler(schedule_file,
-                                      bogchain=bogchain,
-                                      pki=pki,
-                                      url=gossip.local_url,
-                                      node_id=node_id)
-
-        tasks.append(asyncio.create_task(test_schedule.execute()))
-
-    await asyncio.gather(*tasks, return_exceptions=True)
-
+    pass
 
 if __name__ == '__main__':
     arg_parser = ArgumentParser()
@@ -248,12 +235,22 @@ if __name__ == '__main__':
 
     gossip.local_url = f"http://127.0.0.1:{port}"
 
+    test_schedule = TestScheduler(schedule_file,
+                                  bogchain=bogchain,
+                                  pki=pki,
+                                  url=gossip.local_url,
+                                  node_id=node_id)
+
     app_thread = threading.Thread(target=app.run,
                                   kwargs={'host': "0.0.0.0", 'port': port},
                                   daemon=True)
-    app_thread.start()
 
-    asyncio.run(main(schedule_file=schedule_file, accumulation_period=accumulation_period))
+    scheduler_thread = threading.Thread(target=test_schedule.execute, daemon=True)
+
+    app_thread.start()
+    scheduler_thread.start()
+
+    asyncio.run(bogchain.handle_transactions(accumulation_period))
 
     try:
         while True:

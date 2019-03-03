@@ -99,28 +99,32 @@ class Bogchain:
 
     async def handle_transactions(self, accumulation_period):
         while True:
-            if len(self.awaiting_transactions) == 0:
-                self.logger.info(f"No transcations pending beginning sleep")
-                self.wake_transaction_handler.wait()
-                self.logger.info(f"New transactions sleep ends")
-                await asyncio.sleep(accumulation_period)  # todo sensownie czas oczekiwania
-            else:
-                self.new_block_transactions = self.awaiting_transactions[:]
-                self.awaiting_transactions = []
-                self.mining_task = asyncio.create_task(self.mine())
-                try:
-                    proof = await self.mining_task
-                    self.new_block_transactions.append(
-                        Bogchain.create_transaction("mint", self.node_id, Bogchain.mining_bounty))
-                    self.new_block(proof)
-                    self.gossip.flood('/update', self.current_state, self.peers.addresses)
-                    self.wake_transaction_handler.clear()
-                    self.logger.info(f"Mined new block, chain length {len(self.chain)}")
-                except asyncio.CancelledError:
-                    self.logger.info(f"Mining cancelled")
-                    self.mining_task = None
+            self.wake_transaction_handler.wait()
+            print(f"Waiting {self.awaiting_transactions}")
+            print(f"Block {self.new_block_transactions}")
+            self.logger.info(f"New transactions sleep ends")
 
+            await asyncio.sleep(accumulation_period)
             self.wake_transaction_handler.clear()
+
+            self.new_block_transactions = self.awaiting_transactions[:]
+            self.awaiting_transactions = []
+            self.mining_task = asyncio.create_task(self.mine())
+
+            try:
+                proof = await self.mining_task
+                self.new_block_transactions.append(
+                    Bogchain.create_transaction("mint", self.node_id, Bogchain.mining_bounty)
+                )
+                self.new_block(proof)
+                self.gossip.flood('/update', self.current_state, self.peers.addresses)
+                self.logger.info(f"Mined new block, chain length {len(self.chain)}")
+
+            except asyncio.CancelledError:
+                self.mining_task = None
+                self.logger.info(f"Mining cancelled")
+
+
 
     async def mine(self):
         throttled = True if 'throttle' in dir(self) else False

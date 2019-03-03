@@ -1,8 +1,7 @@
 import requests
 import json
 import traceback
-
-from time import sleep
+import time
 
 
 class TestScheduler:
@@ -21,7 +20,7 @@ class TestScheduler:
         self.url = kwargs['url']
         self.node_id = kwargs['node_id']
 
-    async def execute(self):
+    def execute(self):
         with open(self.schedule, 'r') as f:
             lines = f.readlines()
 
@@ -32,13 +31,9 @@ class TestScheduler:
                 continue
 
             if command_args[1] in self.allowed:
-                sleep(float(command_args[0]))
+                time.sleep(float(command_args[0]))
                 method = getattr(self, command_args[1])
-                try:
-                    method(*command_args[2:])
-                except Exception as e:
-                    print(traceback.format_exc(e))
-                    raise e
+                method(*command_args[2:])
                 self.log(command_args)
 
     def log(self, command_args):
@@ -76,7 +71,7 @@ class TestScheduler:
                       headers=self.get_headers(transaction_json))
 
     def transfer(self, *args):
-        recipient = self.bogchain.peers.node_ids[args[0]]
+        recipient = self.bogchain.peers.node_ids[f"http://{args[0]}"]
         amount = int(args[1])
 
         transaction_json = {
@@ -85,4 +80,3 @@ class TestScheduler:
         }
 
         requests.post(f"{self.url}/transactions/new", json=transaction_json, headers=self.get_headers(transaction_json))
-
