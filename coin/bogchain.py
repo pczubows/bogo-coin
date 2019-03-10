@@ -193,8 +193,6 @@ class Bogchain:
 
         while True:
             self.wake_transaction_handler.wait()
-            print(f"Waiting {self.awaiting_transactions}")
-            print(f"Block {self.new_block_transactions}")
             self.logger.info(f"New transactions sleep ends")
 
             await asyncio.sleep(accumulation_period)
