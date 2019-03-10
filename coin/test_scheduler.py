@@ -1,27 +1,65 @@
 import requests
 import json
-import traceback
 import time
+
+# todo add parameters to each method
 
 
 class TestScheduler:
+    """Class responsible for automatic access to application endpoints
+    and communication with other applications in the network.
+
+    Class methods to be executed along with their timing and parameters are
+    provided in formatted schedule file. Syntax as follows:
+
+    sleep_time method_name [target] [args ...]
+
+    sleep_time: floating point value passed to time.sleep before command is executed
+    method_name: method to be called by the scheduler
+    target: url of another application
+
+    Line can be escaped by placing '#' at its beginning.
+
+    More about sechodule file formatting in docs directory.
+
+    Attributes:
+        schedule_file (str): path of the file containing methods to be executed
+        bogchain (coin.Bogchain): Bogchain object necessary for access to peers,
+                                  logger and application id
+        key_pair (coin.KeyPair): KeyPair object for signing requests
+        url (str): url of the application using TestScheduler
+    """
+
     allowed = [
         'register',
         'test',
         'transfer',
-        'sleep',
         'dummy_transaction'
     ]
 
+    self_targeted = ['dummy_transactios']
+
     def __init__(self, schedule_file, **kwargs):
-        self.schedule = schedule_file
+        """Inits TestScheduler
+
+        Parameters
+            schedule_file (str): path of the file containing methods to be executed
+
+        Keyword Arguments:
+            bogchain (coin.Bogchain): Bogchain object necessary for access to peers,
+                                      logger and application id
+            key_pair (coin.KeyPair): KeyPair object for signing requests
+            url (str): url of the application using TestScheduler
+        """
+
+        self.schedule_file = schedule_file
         self.bogchain = kwargs['bogchain']
-        self.pki = kwargs['pki']
+        self.key_pair = kwargs['key_pair']
         self.url = kwargs['url']
-        self.node_id = kwargs['node_id']
 
     def execute(self):
-        with open(self.schedule, 'r') as f:
+        """Executes methods provided in schedule file"""
+        with open(self.schedule_file, 'r') as f:
             lines = f.readlines()
 
         for line in lines:
@@ -37,22 +75,33 @@ class TestScheduler:
                 self.log(command_args)
 
     def log(self, command_args):
-        target = command_args[2] if len(command_args) > 2 else "self"
+        target = command_args[2] if [] else "self"
         self.bogchain.logger.info(f"Executing {command_args[1]} on {target}")
 
     def get_headers(self, data):
-        signature = self.pki.sign(json.dumps(data, sort_keys=True))
-        return {'origin-id': self.node_id, 'signature': signature}
+        """create headers with signature and application id
+
+        Parameters:
+            data (dict): post body to be signed
+
+        Returns:
+            dict: dict with origin header and signature header
+        """
+
+        signature = self.key_pair.sign(json.dumps(data, sort_keys=True))
+        return {'origin-id': self.bogchain.node_id, 'signature': signature}
 
     def register(self, *args):
+        """registers application with remote remote application"""
         register_json = {
             'address': self.url,
-            'node_id': self.node_id,
-            'pub_key': self.pki.pub_key}
+            'node_id': self.bogchain.node_id,
+            'pub_key': self.key_pair.pub_key}
 
         requests.post(f"http://{args[0]}/nodes/register", json=register_json)
 
     def test(self, *args):
+        """access to the test endpoint"""
         test_json = {'dummy': "dummy"}
 
         requests.post(f"http://{args[0]}/test",
@@ -60,6 +109,7 @@ class TestScheduler:
                       headers=self.get_headers(test_json))
 
     def dummy_transaction(self, *args):
+        """Creates fake transaction dict and immediately submits it for mining"""
         transaction_json = {
             'sender': args[1],
             'recipient': args[2],
@@ -71,6 +121,7 @@ class TestScheduler:
                       headers=self.get_headers(transaction_json))
 
     def transfer(self, *args):
+        """Creates new valid transaction dict"""
         recipient = self.bogchain.peers.node_ids[f"http://{args[0]}"]
         amount = int(args[1])
 

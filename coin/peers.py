@@ -1,4 +1,13 @@
 class Peers:
+    """Class for storing peer applications info
+
+    Attributes:
+        addresses_pub_keys (dict): dict mapping peer ids to dicts containing
+            peer address and public key
+        node_ids (dict): dict mapping peer addresses to their ids
+
+    """
+
     def __init__(self):
         self.addresses_pub_keys = {}
         self.node_ids = {}
@@ -29,5 +38,6 @@ class Peers:
 
     @property
     def addresses(self):
+        """Return generator with peer addresses"""
         for peer in self.addresses_pub_keys.values():
             yield peer['address']

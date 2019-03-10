@@ -6,8 +6,17 @@ from cryptography.exceptions import InvalidSignature
 from base64 import b64encode, b64decode
 
 
-class Pki:
+class KeyPair:
+    """RSA key pair along with methods for signature
+    creation and verification.
+
+    Attributes:
+        private_key: cryptography RSA key pair
+        pub_der: der encoded RSA public key
+    """
+
     def __init__(self):
+        """Generates rsa key pair, then der encodes public key"""
         self.private_key = rsa.generate_private_key(
             public_exponent=65537,
             key_size=2048,
@@ -20,6 +29,14 @@ class Pki:
         )
 
     def sign(self, data):
+        """sign post data
+
+        Parameters:
+            data (str): post body to be signed
+
+        Returns:
+            str: Base64 encoded signature
+        """
         data = data.encode()
         signature = self.private_key.sign(
             data,
@@ -37,11 +54,21 @@ class Pki:
         return b64encode(self.pub_der).decode()
 
     @staticmethod
-    def verify(signature, data, pem_pub_key):
+    def verify(signature, data, der_pub_key):
+        """Verify request signature
+
+        Parameters:
+            signature (str): base64 encoded RSA signature
+            data (str): post body to be verified
+            der_pub_key (str): der encoded public key
+
+        Returns:
+            bool: Signature valid
+        """
         data = data.encode()
-        pem_pub_key = b64decode(pem_pub_key.encode())
+        der_pub_key = b64decode(der_pub_key.encode())
         signature = b64decode(signature.encode())
-        pub_key = serialization.load_der_public_key(pem_pub_key, backend=default_backend())
+        pub_key = serialization.load_der_public_key(der_pub_key, backend=default_backend())
         try:
             pub_key.verify(
                 signature,
