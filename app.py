@@ -12,6 +12,7 @@ import json
 import asyncio
 import threading
 import time
+import sys
 
 from uuid import uuid4
 from flask import Flask, request, jsonify
@@ -27,6 +28,8 @@ from coin.test_scheduler import TestScheduler
 # todo sprawdzanie Genesis
 # todo sprawdzanie timestampów
 # todo integracja z Dockerem
+
+app_kill_event = threading.Event()
 
 app = Flask(__name__)
 
@@ -260,6 +263,7 @@ if __name__ == '__main__':
     gossip.local_url = f"http://127.0.0.1:{port}"
 
     test_schedule = TestScheduler(schedule_file,
+                                  app_kill_event=app_kill_event,
                                   bogchain=bogchain,
                                   key_pair=key_pair,
                                   url=gossip.local_url,
@@ -269,15 +273,18 @@ if __name__ == '__main__':
                                   kwargs={'host': "0.0.0.0", 'port': port},
                                   daemon=True)
 
+    transaction_handler_thread = threading.Thread(target=bogchain.run_transaction_handler,
+                                                  kwargs={'accumulation_period': accumulation_period},
+                                                  daemon=True)
+
     scheduler_thread = threading.Thread(target=test_schedule.execute, daemon=True)
 
     app_thread.start()
+    transaction_handler_thread.start()
     scheduler_thread.start()
 
-    asyncio.run(bogchain.handle_transactions(accumulation_period))
-
     try:
-        while True:
-            time.sleep(1)
+        app_kill_event.wait()
+        sys.exit()
     except KeyboardInterrupt:
-        exit(0)
+        sys.exit()

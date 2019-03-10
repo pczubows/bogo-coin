@@ -2,7 +2,6 @@ import json
 import hashlib
 import asyncio
 import threading
-import traceback
 
 from time import time
 
@@ -178,6 +177,14 @@ class Bogchain:
                 return False
 
         return True
+
+    def run_transaction_handler(self, accumulation_period):
+        """Run transaction handler using asyncio
+
+        Parameters:
+            accumulation_period (float): time until transactions will be mined into new block
+        """
+        asyncio.run(self.handle_transactions(accumulation_period))
 
     async def handle_transactions(self, accumulation_period):
         """Loop handling incoming transaction

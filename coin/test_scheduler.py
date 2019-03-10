@@ -20,24 +20,27 @@ class TestScheduler:
 
     Line can be escaped by placing '#' at its beginning.
 
-    More about sechodule file formatting in docs directory.
-
     Attributes:
+        app_kill_event (threading.Event): Event handle allowing for graceful exit
+            from separate thread
         schedule_file (str): path of the file containing methods to be executed
         bogchain (coin.Bogchain): Bogchain object necessary for access to peers,
                                   logger and application id
         key_pair (coin.KeyPair): KeyPair object for signing requests
         url (str): url of the application using TestScheduler
+        allowed (list): list of methods that can be called
+        self_targeted (list): list of methods that are making request on app calling them
     """
 
     allowed = [
         'register',
         'test',
         'transfer',
-        'dummy_transaction'
+        'dummy_transaction',
+        'kill',
     ]
 
-    self_targeted = ['dummy_transactios']
+    self_targeted = ['dummy_transactios', 'transfer']
 
     def __init__(self, schedule_file, **kwargs):
         """Inits TestScheduler
@@ -46,13 +49,15 @@ class TestScheduler:
             schedule_file (str): path of the file containing methods to be executed
 
         Keyword Arguments:
+            app_kill_event (threading.Event): Event handle allowing for graceful exit
+                from separate thread
             bogchain (coin.Bogchain): Bogchain object necessary for access to peers,
                                       logger and application id
             key_pair (coin.KeyPair): KeyPair object for signing requests
             url (str): url of the application using TestScheduler
         """
-
         self.schedule_file = schedule_file
+        self.app_kill_event = kwargs['app_kill_event']
         self.bogchain = kwargs['bogchain']
         self.key_pair = kwargs['key_pair']
         self.url = kwargs['url']
@@ -69,10 +74,15 @@ class TestScheduler:
                 continue
 
             if command_args[1] in self.allowed:
-                time.sleep(float(command_args[0]))
+
+                sleep_time = float(command_args[0])
+
+                if sleep_time > 0:
+                    time.sleep(sleep_time)
+
+                self.log(command_args)
                 method = getattr(self, command_args[1])
                 method(*command_args[2:])
-                self.log(command_args)
 
     def log(self, command_args):
         target = command_args[2] if [] else "self"
@@ -131,3 +141,7 @@ class TestScheduler:
         }
 
         requests.post(f"{self.url}/transactions/new", json=transaction_json, headers=self.get_headers(transaction_json))
+
+    def kill(self):
+        self.app_kill_event.set()
+
