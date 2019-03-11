@@ -88,9 +88,7 @@ class Bogchain:
         Returns:
             dict: genesis_block
         """
-        self.new_block_transactions.append({'sender': "mint",
-                                            'recipient': self.node_id,
-                                            'amount': Bogchain.founder_bounty})
+        self.new_block_transactions.append(Bogchain.create_transaction("mint", self.node_id, Bogchain.founder_bounty))
 
         return self.new_block(100, "gen")
 
