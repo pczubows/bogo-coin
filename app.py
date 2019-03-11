@@ -103,11 +103,12 @@ def test_post():
 @app.route('/transactions/new', methods=['POST'])
 @check_post_keys(['recipient', 'amount'])
 @verify_signature_local
-def create_transaction():
+def new_transaction():
     """Endpoint for creating new transaction, new transaction is then
     broadcasted to app peers"""
     trans_json = request.get_json()
     trans_json['sender'] = node_id
+    trans_json['id'] = str(uuid4())
 
     gossip.flood("/transactions/process", trans_json, bogchain.peers.addresses)
 
@@ -117,14 +118,13 @@ def create_transaction():
 
 
 @app.route('/transactions/process', methods=['POST'])
-@check_post_keys(['sender', 'recipient', 'amount'])
+@check_post_keys(['sender', 'recipient', 'amount', 'id'])
 @verify_signature_foreign
 def process_transaction():
     """Endpoint for processing new transactions received from peer apps"""
     trans_json = request.get_json()
 
-    bogchain.awaiting_transactions.append(
-        Bogchain.create_transaction(trans_json['sender'], trans_json['recipient'], trans_json['amount']))
+    bogchain.awaiting_transactions.append(trans_json)
     if not bogchain.wake_transaction_handler.is_set():
         bogchain.wake_transaction_handler.set()
 
@@ -239,7 +239,7 @@ if __name__ == '__main__':
     arg_parser.add_argument('-G', '--genesis', action="store_true", help="mines genesis block")
     arg_parser.add_argument('-v', '--verbose', action="store_true", help="display info level logs")
     arg_parser.add_argument('-s', '--schedule', default=None, type=str, help="test schedule file")
-    arg_parser.add_argument('-a', '--accumulation', default=3, type=float,
+    arg_parser.add_argument('-a', '--accumulation', default=1.5, type=float,
                             help="time until transactions are mined into block")
     arg_parser.add_argument('-T', '--throttle', default=None, type=float)
 

@@ -2,8 +2,9 @@ import json
 import hashlib
 import asyncio
 import threading
+import time
 
-from time import time
+from uuid import uuid4
 
 from coin.peers import Peers
 
@@ -24,13 +25,15 @@ class Bogchain:
         throttle (float): delay for each iteration inside of mining task, specified only when -T --throttle option
             was used when launching app, used for testing purposes
         logger (Flask.app.logger): flask app logger for debug
-        difficulty (int): number of leading zeroes for computing block proof of work, constant
+        recently_updated (bool): flag preventing from double mining when another node finished mining during
+            while this app waits.
+        difficulty (int): number of leading zeroes for computing block proof of work
         mining_bounty (int): amount of bogo coins received for completing block
         founder_bounty (int): amount of bogo coins received for founding blockchain
 
     """
 
-    difficulty = 4
+    difficulty = 5
     mining_bounty = 2
     founder_bounty = 200
 
@@ -52,6 +55,7 @@ class Bogchain:
         self.mining_task = None
         self.throttle = None
         self.logger = kwargs['logger']
+        self.recently_updated = False
 
     def new_block(self, proof, previous_hash=None):
         """create new block dict and append it to the blockchain
@@ -62,7 +66,7 @@ class Bogchain:
         """
         block = {
             'index': len(self.chain),
-            'timestamp': time(),
+            'timestamp': time.time(),
             'transactions': self.new_block_transactions,
             'proof': proof,
             'previous_hash': previous_hash or self.hash(self.chain[-1])
@@ -82,11 +86,12 @@ class Bogchain:
     @staticmethod
     def create_transaction(sender, recipient, amount):
         """create transaction dict"""
-        return {
-            'sender': sender,
-            'recipient': recipient,
-            'amount': amount
-        }
+        transaction_dict = {'sender': sender,
+                            'recipient': recipient,
+                            'amount': amount,
+                            'id': str(uuid4())}
+
+        return transaction_dict
 
     @staticmethod
     def hash(block):
@@ -201,6 +206,7 @@ class Bogchain:
         while True:
             self.wake_transaction_handler.wait()
             self.logger.info(f"New transactions sleep ends")
+            self.recently_updated = False
 
             await asyncio.sleep(accumulation_period)
             self.wake_transaction_handler.clear()
@@ -210,25 +216,43 @@ class Bogchain:
             self.mining_task = asyncio.create_task(self.mine())
 
             try:
-                proof = await self.mining_task
-                self.new_block_transactions.append(
-                    Bogchain.create_transaction("mint", self.node_id, Bogchain.mining_bounty)
-                )
-                self.new_block(proof)
-                self.gossip.flood('/update', self.current_state, self.peers.addresses)
-                self.logger.info(f"Mined new block, chain length {len(self.chain)}")
+                if not self.recently_updated:
+                    self.logger.info(f"Beginning of mining {len(self.new_block_transactions)} transactions to be mined")
+                    proof = await self.mining_task
+                    self.new_block_transactions.append(
+                        Bogchain.create_transaction("mint", self.node_id, Bogchain.mining_bounty)
+                    )
+                    self.new_block(proof)
+                    self.logger.info(f"Mined new block, chain length {len(self.chain)}")
+                    self.gossip.flood('/update', self.current_state, self.peers.addresses)
 
             except asyncio.CancelledError:
                 self.mining_task = None
+
+                received_block_transactions_ids = [transaction['id'] for transaction in self.last_block['transactions']]
+
+                print(received_block_transactions_ids)
+                print(self.new_block_transactions)
+
+                for transaction in self.new_block_transactions:
+                    if transaction['id'] not in received_block_transactions_ids:
+                        self.awaiting_transactions.append(transaction)
+                        self.logger.info("Leftover new transaction back to awaiting transactions")
+                        self.wake_transaction_handler.set()
                 self.logger.info(f"Mining cancelled")
 
     async def mine(self):
         """asyncio task performing proof of work calculation"""
+        start_time = time.time()
         if self.throttle is not None:
             await asyncio.sleep(self.throttle)
 
         last_proof = self.last_block['proof']
-        return self.proof_of_work(last_proof)
+        proof = self.proof_of_work(last_proof)
+
+        time_elapsed = round((time.time() - start_time) * 1e3)
+        self.logger.info(f"Finished mining proof: {proof}, time elapsed: {time_elapsed} ms")
+        return proof
 
     def update_chain(self, new_chain):
         """verify chain received from peer and update
@@ -260,6 +284,7 @@ class Bogchain:
 
         if replaced:
             self.chain = new_chain
+            self.recently_updated = True
 
         return replaced
 

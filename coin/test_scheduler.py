@@ -12,11 +12,14 @@ class TestScheduler:
     Class methods to be executed along with their timing and parameters are
     provided in formatted schedule file. Syntax as follows:
 
-    sleep_time method_name [target] [args ...]
+    [loop] [n] sleep_time method_name [target] [args ...]
 
     sleep_time: floating point value passed to time.sleep before command is executed
     method_name: method to be called by the scheduler
     target: url of another application
+
+    Prepending line with loop n where n is the integer will cause method to be
+    executed n times each time with the specified wait time
 
     Line can be escaped by placing '#' at its beginning.
 
@@ -73,16 +76,22 @@ class TestScheduler:
             if command_args[0] == '#':
                 continue
 
+            loop_n_times = 1
+
+            if command_args[0] == "loop":
+                loop_n_times = int(command_args[1])
+                command_args = command_args[2:]
+
             if command_args[1] in self.allowed:
+                for _ in range(loop_n_times):
+                    sleep_time = float(command_args[0])
 
-                sleep_time = float(command_args[0])
+                    if sleep_time > 0:
+                        time.sleep(sleep_time)
 
-                if sleep_time > 0:
-                    time.sleep(sleep_time)
-
-                self.log(command_args)
-                method = getattr(self, command_args[1])
-                method(*command_args[2:])
+                    self.log(command_args)
+                    method = getattr(self, command_args[1])
+                    method(*command_args[2:])
 
     def log(self, command_args):
         target = command_args[2] if [] else "self"
