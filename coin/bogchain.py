@@ -27,6 +27,8 @@ class Bogchain:
         logger (Flask.app.logger): flask app logger for debug
         recently_updated (bool): flag preventing from double mining when another node finished mining during
             while this app waits.
+        evil (bool): flag True when app is forging blockchain, will prevent app from
+            from processing further transactions
         difficulty (int): number of leading zeroes for computing block proof of work
         mining_bounty (int): amount of bogo coins received for completing block
         founder_bounty (int): amount of bogo coins received for founding blockchain
@@ -56,6 +58,7 @@ class Bogchain:
         self.throttle = None
         self.logger = kwargs['logger']
         self.recently_updated = False
+        self.evil = False
 
     def new_block(self, proof, previous_hash=None):
         """create new block dict and append it to the blockchain
@@ -63,6 +66,9 @@ class Bogchain:
         Parameters:
             proof (int): proof of work
             previous_hash (str): hash of a previous block
+
+        Returns:
+            dict: new block
         """
         block = {
             'index': len(self.chain),
@@ -77,11 +83,16 @@ class Bogchain:
         return block
 
     def create_genesis_block(self):
-        """create the first block and transfer set amount of coins to founder"""
+        """create the first block and transfer set amount of coins to founder
+
+        Returns:
+            dict: genesis_block
+        """
         self.new_block_transactions.append({'sender': "mint",
                                             'recipient': self.node_id,
                                             'amount': Bogchain.founder_bounty})
-        self.new_block(100, "gen")
+
+        return self.new_block(100, "gen")
 
     @staticmethod
     def create_transaction(sender, recipient, amount):
@@ -204,6 +215,9 @@ class Bogchain:
         """
 
         while True:
+            if self.evil:
+                break
+
             self.wake_transaction_handler.wait()
             self.logger.info(f"New transactions sleep ends")
             self.recently_updated = False
@@ -230,9 +244,6 @@ class Bogchain:
                 self.mining_task = None
 
                 received_block_transactions_ids = [transaction['id'] for transaction in self.last_block['transactions']]
-
-                print(received_block_transactions_ids)
-                print(self.new_block_transactions)
 
                 for transaction in self.new_block_transactions:
                     if transaction['id'] not in received_block_transactions_ids:

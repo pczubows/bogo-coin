@@ -1,0 +1,2 @@
+1 register 127.0.0.1:5002
+1 forge_chain 4 30

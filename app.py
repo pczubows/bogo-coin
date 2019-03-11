@@ -9,9 +9,7 @@ and scheduler allowing for automated tests of the network.
 
 import logging
 import json
-import asyncio
 import threading
-import time
 import sys
 
 from uuid import uuid4
@@ -76,7 +74,7 @@ def verify_signature_foreign(f):
 
 
 def verify_signature_local(f):
-    """verify request signed with apps own private key"""
+    """verify request signed with app's own private key"""
     @wraps(f)
     def decorated_func(*args, **kwargs):
         signature = request.headers.get('signature')
@@ -124,11 +122,15 @@ def process_transaction():
     """Endpoint for processing new transactions received from peer apps"""
     trans_json = request.get_json()
 
+    response = f"New transaction {trans_json['amount']} from {trans_json['sender']} to {trans_json['recipient']}"
+
+    if bogchain.evil:
+        return response, 201
+
     bogchain.awaiting_transactions.append(trans_json)
     if not bogchain.wake_transaction_handler.is_set():
         bogchain.wake_transaction_handler.set()
 
-    response = f"New transaction {trans_json['amount']} from {trans_json['sender']} to {trans_json['recipient']}"
     app.logger.debug(response)
 
     return response, 201
@@ -239,7 +241,7 @@ if __name__ == '__main__':
     arg_parser.add_argument('-G', '--genesis', action="store_true", help="mines genesis block")
     arg_parser.add_argument('-v', '--verbose', action="store_true", help="display info level logs")
     arg_parser.add_argument('-s', '--schedule', default=None, type=str, help="test schedule file")
-    arg_parser.add_argument('-a', '--accumulation', default=1.5, type=float,
+    arg_parser.add_argument('-a', '--accumulation', default=0.5, type=float,
                             help="time until transactions are mined into block")
     arg_parser.add_argument('-T', '--throttle', default=None, type=float)
 
@@ -267,7 +269,8 @@ if __name__ == '__main__':
                                   bogchain=bogchain,
                                   key_pair=key_pair,
                                   url=gossip.local_url,
-                                  node_id=node_id)
+                                  node_id=node_id,
+                                  gossip=gossip)
 
     app_thread = threading.Thread(target=app.run,
                                   kwargs={'host': "0.0.0.0", 'port': port},

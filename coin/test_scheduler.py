@@ -1,6 +1,9 @@
 import requests
 import json
 import time
+import random
+
+from uuid import uuid4
 
 # todo add parameters to each method
 
@@ -15,6 +18,7 @@ class TestScheduler:
     [loop] [n] sleep_time method_name [target] [args ...]
 
     sleep_time: floating point value passed to time.sleep before command is executed
+        put 0 for no sleep time
     method_name: method to be called by the scheduler
     target: url of another application
 
@@ -41,6 +45,8 @@ class TestScheduler:
         'transfer',
         'dummy_transaction',
         'kill',
+        'forge_chain',
+        'sleep'
     ]
 
     self_targeted = ['dummy_transactios', 'transfer']
@@ -84,12 +90,16 @@ class TestScheduler:
 
             if command_args[1] in self.allowed:
                 for _ in range(loop_n_times):
+                    self.log(command_args)
+
                     sleep_time = float(command_args[0])
 
                     if sleep_time > 0:
                         time.sleep(sleep_time)
 
-                    self.log(command_args)
+                    if command_args[1] == "sleep":
+                        continue
+
                     method = getattr(self, command_args[1])
                     method(*command_args[2:])
 
@@ -111,7 +121,11 @@ class TestScheduler:
         return {'origin-id': self.bogchain.node_id, 'signature': signature}
 
     def register(self, *args):
-        """registers application with remote remote application"""
+        """registers application with remote remote application
+
+        Usage:
+            sleep_time register url_of_app
+        """
         register_json = {
             'address': self.url,
             'node_id': self.bogchain.node_id,
@@ -120,7 +134,11 @@ class TestScheduler:
         requests.post(f"http://{args[0]}/nodes/register", json=register_json)
 
     def test(self, *args):
-        """access to the test endpoint"""
+        """access to the test endpoint
+
+        Usage:
+            sleep_time test url_of_app
+        """
         test_json = {'dummy': "dummy"}
 
         requests.post(f"http://{args[0]}/test",
@@ -128,11 +146,16 @@ class TestScheduler:
                       headers=self.get_headers(test_json))
 
     def dummy_transaction(self, *args):
-        """Creates fake transaction dict and immediately submits it for mining"""
+        """Creates fake transaction dict and immediately submits it for mining
+
+        Usage:
+            sleep_time dummy_transaction url_of_app sender recipient amount
+        """
         transaction_json = {
             'sender': args[1],
             'recipient': args[2],
-            'amount': args[3]
+            'amount': args[3],
+            'id': str(uuid4())
         }
 
         requests.post(f"http://{args[0]}/transactions/process",
@@ -140,7 +163,11 @@ class TestScheduler:
                       headers=self.get_headers(transaction_json))
 
     def transfer(self, *args):
-        """Creates new valid transaction dict"""
+        """Creates new valid transaction dict
+
+        Usage:
+            sleep_time transfer recipients_url amount
+        """
         recipient = self.bogchain.peers.node_ids[f"http://{args[0]}"]
         amount = int(args[1])
 
@@ -151,6 +178,69 @@ class TestScheduler:
 
         requests.post(f"{self.url}/transactions/new", json=transaction_json, headers=self.get_headers(transaction_json))
 
+    def forge_chain(self, *args):
+        """Forge fake blockchain and submit it for update
+
+        app will try to use real genesis block if possible
+
+        Usage:
+            sleep_time forge_chain length amount_to_forge_in_each_block
+        """
+        self.bogchain.evil = True
+
+        if self.bogchain.mining_task is not None:
+            self.bogchain.mining_task.cancel()
+
+        fake_chain = []
+
+        if len(self.bogchain.chain) == 0:
+            genesis_transactions = [self.bogchain.create_transaction('mint',
+                                                                     self.bogchain.node_id,
+                                                                     self.bogchain.mining_bounty)]
+            genesis_block = {
+                'index': 0,
+                'timestamp': time.time(),
+                'transactions': genesis_transactions,
+                'proof': 100,
+                'previous_hash': 'gen'
+            }
+
+            fake_chain.append(genesis_block)
+        else:
+            fake_chain.append(self.bogchain.chain[0])
+
+        fake_length = int(args[0])
+        block_amount = int(args[1])
+
+        for i in range(1, fake_length):
+            fake_transactions = [self.bogchain.create_transaction(
+                random.sample(self.bogchain.peers.addresses_pub_keys.keys(), 1),  # choose random peer as target
+                self.bogchain.node_id,
+                block_amount
+            )]
+
+            previous_block = fake_chain[i - 1]
+
+            proof = self.bogchain.proof_of_work(previous_block['proof'])
+
+            fake_block = {
+                'index': len(fake_chain),
+                'timestamp': time.time(),
+                'transactions': fake_transactions,
+                'proof': proof,
+                'previous_hash': self.bogchain.hash(previous_block)
+            }
+
+            fake_chain.append(fake_block)
+
+        self.bogchain.chain = fake_chain
+        self.bogchain.gossip.flood('/update', self.bogchain.current_state, self.bogchain.peers.addresses)
+
     def kill(self):
+        """Shutdown app
+
+        Usage:
+            sleep_time kill
+        """
         self.app_kill_event.set()
 

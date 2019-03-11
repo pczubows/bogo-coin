@@ -1,2 +1,2 @@
 0.5 register 127.0.0.1:5001
-loop 3 2 transfer 127.0.0.1:5002 10
+loop 3 0.5 transfer 127.0.0.1:5002 10
