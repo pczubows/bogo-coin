@@ -2,7 +2,7 @@
 
 Simulated network of cryptocurrency nodes. Each node is implemeneted as a Flask app equipped with blockchain and simple request verification. Apps have ability to register with one another as peers and then communicate about new peers and transactions in the network.
 
-Each app can also accept schedule file as an arguemnt. Schedule file is specially formatted text file which specifies actions that app will perform during simulation. The precise formatting of schedule file commands is specified in [```coin.TestScheduler```](../blob/master/coin/test_scheduler.py) docstrings.
+Each app can also accept schedule file as an arguemnt. Schedule file is specially formatted text file which specifies actions that app will perform during simulation. The precise formatting of schedule file commands is specified in [```coin.TestScheduler```](../master/coin/test_scheduler.py) docstrings.
 
 ## Usage
 
@@ -27,5 +27,5 @@ Python 3.6+ Modules: Flask, requests, cryptography
 
 ## Based on
 
-[https://github.com/dvf/blockchain](https://github.com/dvf/blockchain)
-[https://medium.freecodecamp.org/the-authoritative-guide-to-blockchain-development-855ab65b58bc](https://medium.freecodecamp.org/the-authoritative-guide-to-blockchain-development-855ab65b58bc)
+* [https://github.com/dvf/blockchain](https://github.com/dvf/blockchain)
+* [https://medium.freecodecamp.org/the-authoritative-guide-to-blockchain-development-855ab65b58bc](https://medium.freecodecamp.org/the-authoritative-guide-to-blockchain-development-855ab65b58bc)
