@@ -19,7 +19,7 @@ optional arguments:
 
 ### Test Scenarios 
 
-Example test scenarios are located in ```test_scenarios``` directory. Each subdirectory contains test schedule files and bash script for launching whole network and gathering node states at the end of simulation. ```normal``` subdirectory contains network working without any nodes attempting to forge blockchain. In ```forge``` there are two scenarios where single node tries to replace chain with fake one. One in which all nodes have same mining speed and one where "evil" node is much faster than others.
+Example test scenarios are located in [```test_scenarios```](../master/test_scenarios) directory. Each subdirectory contains test schedule files and bash script for launching whole network and gathering node states at the end of simulation. [```normal```](../master/test_scenarios/normal) subdirectory contains network working without any nodes attempting to forge blockchain. In [```forge```](../master/test_scenarios/forge) there are two scenarios where single node tries to replace chain with fake one. One in which all nodes have same mining speed and one where "evil" node is much faster than others.
 
 ## Requirements
 
