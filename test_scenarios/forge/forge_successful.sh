@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# test network with all nodes mining at same speed
+# test network with one node mining faster than others
 # no one attempts to forge blockchain
 # needs to be run from project root directory
 

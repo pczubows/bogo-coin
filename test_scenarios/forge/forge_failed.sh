@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # test network with all nodes mining at same speed
-# no one attempts to forge blockchain
+# one node attempts to forge blockchain
 # needs to be run from project root directory
 
 if [[ "$VIRTUAL_ENV" == "" ]]

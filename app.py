@@ -237,13 +237,15 @@ def get_node_id():
 
 if __name__ == '__main__':
     arg_parser = ArgumentParser()
-    arg_parser.add_argument('-p', '--port', default=5000, type=int, help="listening port")
-    arg_parser.add_argument('-G', '--genesis', action="store_true", help="mines genesis block")
-    arg_parser.add_argument('-v', '--verbose', action="store_true", help="display info level logs")
-    arg_parser.add_argument('-s', '--schedule', default=None, type=str, help="test schedule file")
+    arg_parser.add_argument('-p', '--port', default=5000, type=int,
+                            help="specify port on which app will listen, defaults to 5000")
+    arg_parser.add_argument('-G', '--genesis', action="store_true", help="inintiate node with genesis block")
+    arg_parser.add_argument('-v', '--verbose', action="store_true",
+                            help="display info level log, otherwise only bare flask logs will be printed")
+    arg_parser.add_argument('-s', '--schedule', default=None, type=str, help="path to test schedule file")
     arg_parser.add_argument('-a', '--accumulation', default=0.5, type=float,
-                            help="time until transactions are mined into block")
-    arg_parser.add_argument('-T', '--throttle', default=None, type=float)
+                            help="time in seconds app waits before it starts to mine transactions into new block, defaults to 0.5s")
+    arg_parser.add_argument('-T', '--throttle', default=None, type=float, help="arbitrary slowdown of mining speed")
 
     cl_args = arg_parser.parse_args()
     port = cl_args.port
