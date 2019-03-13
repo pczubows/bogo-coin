@@ -8,14 +8,13 @@ Each app can also accept schedule file as an arguemnt. Schedule file is speciall
 
 ```app.py [-h] [-p PORT] [-G] [-v] [-s SCHEDULE] [-a ACCUMULATION] [-T THROTTLE]```
 
-optional arguments:
-  ```-h, --help```            show argsparse generated help 
-  ```-p PORT, --port PORT```  specify port on which app will listen, defaults to 5000
-  ```-G, --genesis```         inintiate node with genesis block
-  ```-v, --verbose```         display info level log, otherwise only bare flask logs will be printed
-  ```-s SCHEDULE, --schedule SCHEDULE``` path to test schedule file
-  ```-a ACCUMULATION, --accumulation ACCUMULATION ``` time in seconds app waits before it starts to mine transactions into new block, defaults to 0.5s  
-  ```-T THROTTLE, --throttle THROTTLE``` arbitrary slowdown of mining speed 
+  * ```-h, --help```            show argsparse generated help 
+  * ```-p PORT, --port PORT```  specify port on which app will listen, defaults to 5000
+  * ```-G, --genesis```         inintiate node with genesis block
+  * ```-v, --verbose```         display info level log, otherwise only bare flask logs will be printed
+  * ```-s SCHEDULE, --schedule SCHEDULE``` path to test schedule file
+  * ```-a ACCUMULATION, --accumulation ACCUMULATION ``` time in seconds app waits before it starts to mine transactions into new block, defaults to 0.5s  
+  * ```-T THROTTLE, --throttle THROTTLE``` arbitrary slowdown of mining speed 
 
 ### Test Scenarios 
 
