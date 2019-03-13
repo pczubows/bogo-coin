@@ -1,8 +1,8 @@
 # Bogo Coin
 
-Simulated network of cryptocurrency nodes. Each node is implemeneted as a Flask app equipped with blockchain and simple request verification. Apps have ability to register with one another as peers and then communicate about new peers and transactions in the network.
+Simulated network of cryptocurrency nodes. Each node is implemented as a Flask app equipped with blockchain and simple request verification. Apps have ability to register with one another as peers and then communicate about new peers and transactions in the network.
 
-Each app can also accept schedule file as an arguemnt. Schedule file is specially formatted text file which specifies actions that app will perform during simulation. The precise formatting of schedule file commands is specified in [```coin.TestScheduler```](../master/coin/test_scheduler.py) docstrings.
+Each app can also accept schedule file as an argument. Schedule file is specially formatted text file which specifies actions that app will perform during simulation. The precise formatting of schedule file commands is specified in [```coin.TestScheduler```](../master/coin/test_scheduler.py) docstrings.
 
 ## Usage
 
